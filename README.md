@@ -1,5 +1,5 @@
 # Crypto Futures Position-Size & Risk Calculator (Python + Excel)
-
+🚀 **Live Web App:** [Launch the Calculator on Streamlit](https://position-sizing-risk-calculator.streamlit.app/)
 ## Project Overview
 A fixed-risk position-sizing tool for Crypto Perpetual Futures, built as a **Streamlit web app** with a matching **Excel** version. Instead of guessing a position size, you enter your Entry, Stop Loss and the dollar amount you are willing to lose. The tool returns the exact **Order Value (USDT)** and **Order Qty (Coins)** so that a Stop Loss hit costs you the predefined risk, no more.
 
