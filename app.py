@@ -14,11 +14,6 @@ with c2:
 with c3:
     risk_dollars = st.number_input("Risk (USDT)", min_value=0.1, value=100.0, step=1.0, format="%.2f")
 
-with st.expander("⚙️ Qty rounding (change for BTC / ETH / SOL)"):
-    qty_decimals = st.selectbox(
-        "Qty decimals", [0, 1, 2, 3, 4, 5], index=0,
-        help="0 for cheap coins (XRP, DOGE). 2-3 for SOL/ETH, 3-4 for BTC. Always rounds DOWN, so you never risk more than you set.")
-
 # ---------- CALCULATION ----------
 E, SL, R = Decimal(str(entry_price)), Decimal(str(stop_loss)), Decimal(str(risk_dollars))
 distance = abs(E - SL)
@@ -29,17 +24,34 @@ if E <= 0 or SL <= 0 or distance == 0:
     st.stop()
 
 is_long = E > SL
+raw_qty = R / distance
+
+# Auto rounding (always DOWN so you never risk more than you set)
+if raw_qty >= 100:
+    qty_decimals = 0
+elif raw_qty >= 10:
+    qty_decimals = 1
+elif raw_qty >= 1:
+    qty_decimals = 2
+elif raw_qty >= 0.1:
+    qty_decimals = 3
+else:
+    qty_decimals = 4
+
 step = Decimal(1).scaleb(-qty_decimals)
-qty = ((R / distance) // step) * step
+qty = (raw_qty // step) * step
 if qty <= 0:
-    st.error("⚠️ Quantity rounds to 0. Increase risk, widen the stop, or use more qty decimals.")
+    st.error("⚠️ Quantity is too small. Increase risk or widen your stop.")
     st.stop()
 
 order_value = (qty * E).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 actual_risk = qty * distance
 
 # ---------- RESULTS ----------
-st.success("🟢 **LONG**") if is_long else st.error("🔴 **SHORT**")
+if is_long:
+    st.success("🟢 **LONG**")
+else:
+    st.error("🔴 **SHORT**")
 
 a, b = st.columns(2)
 with a:
@@ -63,9 +75,11 @@ with st.expander("📊 Leverage & liquidation check (optional)"):
     margin = qty * E / Decimal(leverage)
     B = margin if mode == "Isolated" else Decimal(str(balance))
     if is_long:
-        liq = (qty * E - B) / (qty * (1 - mmr)); safe = liq < SL
+        liq = (qty * E - B) / (qty * (1 - mmr))
+        safe = liq < SL
     else:
-        liq = (B + qty * E) / (qty * (1 + mmr)); safe = liq > SL
+        liq = (B + qty * E) / (qty * (1 + mmr))
+        safe = liq > SL
 
     m1, m2 = st.columns(2)
     m1.metric("Margin required", f"${margin:,.2f}")
@@ -93,13 +107,13 @@ with st.expander("🎯 Take Profit / expected return (optional)"):
         TP = Decimal(str(tp_input))
         valid = TP > E if is_long else TP < E
         if not valid:
-            st.error(f"⚠️ For a {'LONG' if is_long else 'SHORT'}, Take Profit must be "
-                     f"{'above' if is_long else 'below'} Entry.")
+            direction = "above" if is_long else "below"
+            st.error(f"⚠️ For a {'LONG' if is_long else 'SHORT'}, Take Profit must be {direction} Entry.")
         else:
             profit = qty * abs(TP - E)
             rr = profit / actual_risk
             move_pct = abs(TP - E) / E * 100
-            roi = profit / margin * 100   # uses the leverage chosen above
+            roi = profit / margin * 100
 
             t1, t2, t3 = st.columns(3)
             t1.metric("Estimated profit", f"${profit:,.2f}")
