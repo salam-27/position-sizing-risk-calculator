@@ -1,61 +1,64 @@
 import streamlit as st
 
-st.set_page_config(page_title="Universal Position Calculator", page_icon="📊", layout="centered")
+st.set_page_config(page_title="Universal Crypto Position Calculator", page_icon="⚡", layout="centered")
 
-st.title("📊 Universal Risk & Position Size Calculator")
-st.caption("Built by Salam Afeez | Financial Data Analyst & Risk Modeling")
+st.title("⚡ Universal Crypto Futures Position Calculator")
+st.caption("Bybit / Bitget Hedge Mode Order Value & Quantity | Built by Salam Afeez")
 
 st.markdown("---")
 
-# User Inputs in two clean columns
-col1, col2 = st.columns(2)
+# 1. Your 3 Exact Inputs (Defaulted to your Excel / Jupyter values)
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    account_balance = st.number_input("Account Balance ($)", min_value=10.0, value=10000.0, step=100.0)
-    risk_percent = st.number_input("Risk per Trade (%)", min_value=0.1, max_value=100.0, value=1.0, step=0.25)
-    rr_ratio = st.number_input("Target Risk-to-Reward (1 : X)", min_value=0.5, value=3.0, step=0.5)
+    entry_price = st.number_input("Entry Price (E)", min_value=0.0000001, value=0.87718, step=0.00010, format="%.5f")
 
 with col2:
-    entry_price = st.number_input("Entry Price", min_value=0.00001, value=1.08500, format="%.5f")
-    stop_loss = st.number_input("Stop Loss Price", min_value=0.00001, value=1.08200, format="%.5f")
-    contract_size = st.selectbox(
-        "Asset Class / Contract Size",
-        options=[
-            ("Crypto / Indices / Stocks (1 Unit)", 1),
-            ("Standard FX Lot (100,000 Units)", 100000),
-            ("Mini FX Lot (10,000 Units)", 10000),
-        ],
-        format_func=lambda x: x[0]
-    )[1]
+    stop_loss = st.number_input("Stop Loss (SL)", min_value=0.0000001, value=0.87678, step=0.00010, format="%.5f")
+
+with col3:
+    risk_dollars = st.number_input("Risk ($ USDT)", min_value=0.1, value=100.0, step=1.0, format="%.2f")
 
 st.markdown("---")
 
-# Core Mathematical Engine
-risk_dollars = account_balance * (risk_percent / 100.0)
+# 2. Find the price gap between Entry and Stop Loss
 stop_distance = abs(entry_price - stop_loss)
 
 if stop_distance == 0:
-    st.error("⚠️ Entry Price and Stop Loss cannot be identical. Please adjust your Stop Loss.")
+    st.error("⚠️ Entry Price and Stop Loss cannot be identical.")
 else:
-    # Trade Direction & Target Calculation
-    is_long = entry_price > stop_loss
-    direction = "🟢 LONG (BUY)" if is_long else "🔴 SHORT (SELL)"
-    take_profit = entry_price + (stop_distance * rr_ratio) if is_long else entry_price - (stop_distance * rr_ratio)
-    expected_reward = risk_dollars * rr_ratio
+    # 3. Calculate how many coins/tokens you are buying or shorting
+    coin_quantity = risk_dollars / stop_distance
 
-    # Universal Position Size Formula
-    raw_units = risk_dollars / stop_distance
-    position_lots = raw_units / contract_size
+    # 4. YOUR UNIVERSAL FORMULA: Convert coin quantity into USDT Order Value
+    order_value = coin_quantity * entry_price
 
-    # Output Metrics Display
-    st.subheader(f"Trade Setup: {direction}")
-    
+    # 5. Automatically detect Long vs. Short and calculate 1:3 Take-Profit
+    if entry_price > stop_loss:
+        direction = "🟢 LONG"
+        take_profit_1_to_3 = entry_price + (stop_distance * 3)
+    else:
+        direction = "🔴 SHORT"
+        take_profit_1_to_3 = entry_price - (stop_distance * 3)
+
+    expected_profit_1_to_3 = risk_dollars * 3
+
+    # 6. Display the clean results
+    st.subheader(f"Trade Direction: {direction}")
+
+    # Primary Copy-Paste Box for Bybit / Bitget
+    st.success(
+        f"**Order Value (USDT):** `${order_value:,.0f}` *(Exact: ${order_value:,.2f})* \n"
+        f"**Position Size (Coins):** `{coin_quantity:,.0f} units`  \n"
+        f"**Take Profit (1:3 R:R):** `{take_profit_1_to_3:.5f}` *(+${expected_profit_1_to_3:,.2f})*"
+    )
+
     m1, m2, m3 = st.columns(3)
-    m1.metric("Capital at Risk", f"${risk_dollars:,.2f}", f"-{risk_percent}%")
-    m2.metric("Required Units", f"{raw_units:,.2f}")
-    m3.metric("Position Size (Lots/Contracts)", f"{position_lots:,.4f}")
+    m1.metric("Order Value (USDT)", f"${order_value:,.0f}")
+    m2.metric("Position Size (Coins)", f"{coin_quantity:,.0f}")
+    m3.metric("Take Profit (1:3)", f"{take_profit_1_to_3:.5f}")
 
     m4, m5, m6 = st.columns(3)
-    m4.metric("Stop Distance", f"{stop_distance:.5f}")
-    m5.metric(f"Take Profit (1:{rr_ratio:g})", f"{take_profit:.5f}")
-    m6.metric("Projected Profit", f"${expected_reward:,.2f}", f"+{risk_percent * rr_ratio:g}%")
+    m4.metric("Entry Price", f"{entry_price:.5f}")
+    m5.metric("Stop Loss", f"{stop_loss:.5f}")
+    m6.metric("Risk ($)", f"${risk_dollars:,.2f}")
