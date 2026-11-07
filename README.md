@@ -1,22 +1,46 @@
-# Automated Position-Sizing & Risk-Exposure Calculator (Excel & Python)
+# Crypto Futures Position-Size & Risk Calculator (Python + Excel)
 
 ## Project Overview
-A universal position-sizing and risk-management model built in both **Microsoft Excel** and **Python** to standardize capital-at-risk across Crypto Perpetual Futures and Forex markets. Instead of entering arbitrary position sizes, this tool calculates the exact unit quantity, USDT order value, or FX lot size required so that any trade hitting its Stop-Loss loses strictly the predefined dollar risk amount.
+A fixed-risk position-sizing tool for Crypto Perpetual Futures, built as a **Streamlit web app** with a matching **Excel** version. Instead of guessing a position size, you enter your Entry, Stop Loss and the dollar amount you are willing to lose. The tool returns the exact **Order Value (USDT)** and **Order Qty (Coins)** so that a Stop Loss hit costs you the predefined risk, no more.
 
-## Core Formula & Logic
-Regardless of asset price or volatility, the model enforces fixed-dollar risk using a universal two-step calculation:
-1. **Unit / Coin Quantity:** `Risk ($) / |Entry Price - Stop Loss Price|`
-2. **Total Order Value (USDT):** `Unit Quantity × Entry Price`
-3. **FX Standard Lots:** `Unit Quantity / 100,000`
+It is built as a final pre-trade check: analysis is already done, this confirms your numbers before you place the order on your exchange (Bybit, Bitget, or any other).
 
-### Example Calculation (Included in Excel & Python Models)
-* **Entry Price (E):** `0.87718`
-* **Stop Loss (SL):** `0.87678` (Stop distance = `0.00040`)
-* **Fixed Dollar Risk:** `$100.00`
-* **Calculated Unit Size:** `250,000 units`
-* **Output Order Value:** `$219,295 USDT`
-* **Automated 1:3 R:R Take-Profit Target:** `0.87838`
+## Core Formula
+1. **Order Qty (Coins):** `Risk ($) / |Entry Price - Stop Loss|`
+2. **Order Value (USDT):** `Order Qty × Entry Price`
+3. **Direction:** detected automatically (Stop Loss below Entry = Long, above = Short)
+
+Leverage does **not** change the order size or the dollar risk. It only changes the margin the exchange locks (`Order Value / Leverage`) and how close your liquidation price sits to your entry.
+
+### Example
+* **Entry:** `0.87718`
+* **Stop Loss:** `0.87678` (stop distance = `0.00040`)
+* **Risk:** `$100.00`
+* **Order Qty:** `250,000 coins`
+* **Order Value:** `$219,295 USDT`
+
+## Features
+* **Copy-ready outputs:** Order Value (USDT) and Order Qty (Coins) are shown in copy boxes, formatted to paste straight into the exchange order panel.
+* **Always rounds down:** quantity is rounded down to the exchange's step size, so you never risk more than you set.
+* **Optional coin selector:** choose from the top 300 USDT perpetuals (live price, quantity step, minimum order size and max leverage loaded from Bitget's public API), or type any coin's prices manually.
+* **Leverage & liquidation check (optional):** shows margin required, an estimated liquidation price (Isolated or Cross), and warns when liquidation would hit *before* your Stop Loss.
+* **Take Profit & expected return (optional):** enter your own target to see estimated profit, Risk:Reward and return on margin.
 
 ## Files in This Repository
-* `Position_Size_Calculator.xlsx` — Interactive Excel calculator for rapid pre-trade order value sizing.
-* `Universal_Position_Size_Calculator.ipynb` — Python script that automates Long/Short direction detection, 1:3 Risk-Reward Take-Profit projection, and dual Crypto/Forex sizing.
+* `app.py` — Streamlit position-size calculator.
+* `requirements.txt` — Python dependencies (`streamlit`, `requests`).
+* `Position size calc.xlsx` — Excel version for quick pre-trade sizing.
+
+## Run Locally
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+## Notes & Limitations
+* Liquidation price is an **estimate**. Real figures depend on the exchange's margin tiers, fees and funding. Always compare with the liquidation price shown on the exchange's order panel.
+* Profit and loss figures are before fees, funding and slippage, so real loss at the Stop Loss can be slightly higher.
+* The coin list and live prices come from Bitget. Prices on other exchanges can differ slightly, so always enter your actual entry price.
+* This tool is for position sizing and risk management only. It is not financial advice.
+
+*Built by Salam Afeez*
